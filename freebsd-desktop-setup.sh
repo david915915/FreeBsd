@@ -1,43 +1,44 @@
-#!/bin/sh
+# Switch to quarterly pkg repo for stable desktop packages
+mkdir -p /usr/local/etc/pkg/repos
+cat <<EOF > /usr/local/etc/pkg/repos/FreeBSD.conf
+FreeBSD: {
+  url: "pkg+http://pkg.FreeBSD.org/\${ABI}/quarterly",
+  mirror_type: "srv",
+  signature_type: "fingerprints",
+  fingerprints: "/usr/share/keys/pkg",
+  enabled: yes
+}
+EOF
 
-set -e
-
-echo ">>> Updating system..."
 pkg update -f
 pkg upgrade -y
 
-echo ">>> Installing core desktop packages and tools..."
+# Install XFCE and all requested multimedia, productivity, and gaming apps
 pkg install -y \
-    xorg sddm \
-    kde5 plasma5-sddm-kcm \
-    xfce xfce4-goodies \
-    firefox chromium \
-    vlc gimp libreoffice \
-    retroarch kodi \
-    qt5ct gnome-themes-extra \
-    open-vm-tools xf86-video-vmware \
-    alsa-utils pulseaudio pavucontrol \
-    neofetch octopkg git wget unzip htop
+  xorg xfce xfce4-goodies \
+  firefox chromium \
+  vlc gimp libreoffice \
+  retroarch kodi steam \
+  qt5ct gnome-themes-extra \
+  open-vm-tools xf86-video-vmware \
+  alsa-utils pulseaudio pavucontrol \
+  neofetch octopkg git wget unzip htop
 
-echo ">>> Enable sddm for GUI login..."
+# Enable desktop and VMware services
 sysrc sddm_enable=YES
-
-echo ">>> Enabling VMware tools and required services..."
+sysrc dbus_enable=YES
+sysrc hald_enable=YES
 sysrc vmware_guest_vmblock_enable=YES
 sysrc vmware_guest_vmhgfs_enable=YES
 sysrc vmware_guest_vmmemctl_enable=YES
 sysrc vmware_guest_vmxnet_enable=YES
-sysrc dbus_enable=YES
-sysrc hald_enable=YES
-
-echo ">>> Enable sound..."
 sysrc sndiod_enable=YES
 
-echo ">>> Set default sound device (VMware) and mixer volume..."
+# Default audio device and mixer level
 echo 'hw.snd.default_unit=0' >> /etc/sysctl.conf
 echo 'mixer vol 100' >> /etc/rc.local
 
-echo ">>> Creating wallpapers and themes directory..."
+# Wallpapers and themes
 mkdir -p /usr/share/wallpapers/custom
 cd /usr/share/wallpapers/custom
 fetch https://wallpapercave.com/wp/wp2599594.jpg -o space1.jpg
@@ -45,15 +46,12 @@ fetch https://wallpapercave.com/wp/wp2754828.jpg -o retro1.jpg
 fetch https://wallpapercave.com/wp/wp2860281.jpg -o archstyle1.jpg
 cd ~
 
-echo ">>> Installing Google Chrome via linux_base-c7 setup..."
+# Enable Linux support and prepare for Steam and Chrome
 pkg install -y linux_base-c7
 sysrc linux_enable=YES
 kldload linux
 
-echo ">>> Installing Steam (Linux version)..."
-pkg install -y steam
-
-echo ">>> Post-install tip: You may need to enable Linux kernel modules at boot..."
+# Post-install loader config for Linux and sound
 cat << EOF >> /boot/loader.conf
 linux_load="YES"
 linux64_load="YES"
@@ -61,7 +59,7 @@ vmware_load="YES"
 snd_hda_load="YES"
 EOF
 
-echo ">>> Set up user session chooser for SDDM..."
+# Configure SDDM
 cat << EOF > /usr/local/etc/sddm.conf
 [Autologin]
 User=
@@ -75,6 +73,6 @@ MaximumUid=65000
 MinimumUid=1000
 EOF
 
-echo ">>> Setup complete!"
-echo ">> Reboot, log in with SDDM, and choose between KDE Plasma and XFCE."
-echo ">> Consider running 'octopkg' as GUI package manager."
+# Final instructions
+echo ">>> Setup complete! Reboot and log into XFCE via SDDM."
+echo ">>> KDE is not included; install it later using: pkg install kde5"
